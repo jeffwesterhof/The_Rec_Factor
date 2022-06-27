@@ -1,3 +1,17 @@
+---
+title: "Understanding and Predicting Recidivism"
+author: "Jeff Westerhof"
+date: '2022-06-21'
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+
+Import & clean the data
+
+```{r}
 rec_raw <- read.csv("C:/Users/jwest/Documents/Final Project/NIJ_s_Recidivism_Challenge_Full_Dataset.csv", header = T, stringsAsFactors = TRUE)
   
 summary(rec_raw)
@@ -11,6 +25,7 @@ summary(rec)
 
 #Imputing Supervision Level from Risk Score
 sum(rec$Supervision_Level_First == "")
+library(epiDisplay)
 risk<-tabpct(rec$Supervision_Risk_Score_First,
              rec$Supervision_Level_First)
 rec$Supervision_Level_First[rec$Supervision_Level_First == "" & rec$Supervision_Risk_Score_First<6] = 'Standard'
@@ -61,9 +76,13 @@ summary(rec$Jobs_Per_Year)
 rec$Percent_Days_Employed[is.na(rec$Percent_Days_Employed)]= .4845
 rec$Jobs_Per_Year[is.na(rec$Jobs_Per_Year)] = .7722
 str(rec)
-#Some statistics: frequency distribution of categorical data by 
-#recidivism outcome
+```
+
+Some descriptive statistics
+
+```{r}
 summary(rec)
+str(rec)
 install.packages('epiDisplay')
 library(epiDisplay)
 race <-tabpct(rec$Race, rec$Recidivism_Within_3years, percent = 'row',
@@ -139,24 +158,27 @@ hist(rec$Avg_Days_per_DrugTest)
 
 cor(rec[,c(42:48)])
 
-#Partition data into comparison groups
+```
 
+Partition data to: Demographic & prior criminal history factors, demographic
+& post release factors, All data
+```{r}
 prior_dem<-rec[,c(2,4:6,9:30,50)]
 
 all_data<- rec[,c(2,4:6,9:50)]
 
 post_dem<- rec[,c(2,4:6,9:10,31:50)]
+```
 
-
-#Random Forest for feature importance & classification
-
+Random Forest for feature importance & classification
+```{r}
 install.packages("randomForest", repos = "http://cran.us.r-project.org")
 
 library(randomForest)
 rf_prior<-randomForest(Recidivism_Within_3years~.,data = prior_dem, 
-                       importance= TRUE, ntree = 100)
+                 importance= TRUE, ntree = 100)
 rf_all<-randomForest(Recidivism_Within_3years~.,data = all_data, 
-                     importance= TRUE, ntree = 100)
+                         importance= TRUE, ntree = 100)
 importance(rf_prior)
 importance(rf_all)
 varImpPlot(rf_prior)
@@ -196,66 +218,9 @@ rf_all_pred <- predict(rf_all, rfall_test)
 confusionMatrix(rfall_test[,"Recidivism_Within_3years"],rf_all_pred,
                 positive = "true")
 
-
-
-#Recidivism Probability using Logistic Regression
-
-index <- sample(1:nrow(prior_dem), .7 * nrow(prior_dem))
-lr_prior_train <- prior_dem[index,]
-lr_prior_test <- prior_dem[-index,]
-
-lr_prior<-glm(Recidivism_Within_3years ~.,lr_prior_train, family = 'binomial')
-
-lr_prior_pred <- predict(lr_prior, lr_prior_test, type="response")
-lr_prior_class <- ifelse(lr_prior_pred>=0.5, "true", "false")
-lr_prior_class
-lr_prior_confmatrix <- table(actual = lr_prior_test$Recidivism_Within_3years,
-                             predicted = lr_prior_class)
-lr_prior_confmatrix
-
-all_data_risk <- all_data
-index <- sample(1:nrow(all_data), .7 * nrow(all_data))
-lr_all_train <- all_data[index,]
-lr_all_test <- all_data[-index,]
-
-resid <-table(all_data_risk$change,all_data_risk$Residence_Changes)
-resid
-chisq.test(resid)
-
-lr_all<-glm(Recidivism_Within_3years ~.,lr_all_train, family = 'binomial')
-summary(lr_all)
-
-lr_all_pred <- predict(lr_all, lr_all_test, type="response")
-lr_all_class <- ifelse(lr_all_pred>=0.5, "true", "false")
-lr_all_class
-lr_all_confmatrix <- table(actual = lr_all_test$Recidivism_Within_3years,
-                           predicted = lr_all_class)
-lr_all_confmatrix
-
-all_data_risk$prior_prob = predict(prior_risk, prior_dem_risk, type = "response")
-all_data_risk$all_prob = predict(all_risk, all_data_risk, type = "response")
-hist(all_data_risk$all_prob)
-all_data_risk$prob_dif = all_data_risk$all_prob - all_data_risk$prior_prob
-hist(all_data_risk$prob_dif)
-sd(all_data_risk$prior_prob)
-all_data_risk$change = "Higher"
-all_data_risk$change[all_data_risk$prob_dif<0] = "Lower"
-lower_prob <- all_data_risk[all_data_risk$prob_dif < -0.1,]
-higher_prob <- all_data_risk[all_data_risk$prob_dif > 0.1,]
-
-hist(higher_prob$Jobs_Per_Year)
-hist(lower_prob$Jobs_Per_Year)
-hist(higher_prob$Percent_Days_Employed)
-hist(lower_prob$Percent_Days_Employed)
-plot(lower_prob$Recidivism_Within_3years)
-plot(table(mean(all_data_risk$Percent_Days_Employed), all_data_risk$change))
-plot(lower_prob$Residence_Changes)
-wilcox.test(higher_prob$Percent_Days_Employed,
-            lower_prob$Percent_Days_Employed, exact= F)
-wilcox.test(higher_prob$Jobs_Per_Year,
-            lower_prob$Jobs_Per_Year, exact= F)
-#Knn
-library(caret)
+```
+Classification Using knn
+```{r}
 knn_data_prior<-prior_dem
 knn_data_all <-all_data
 knn_data_post <-post_dem
@@ -331,3 +296,63 @@ knn_post$results
 knn_post_pred <- predict(knn_post, knn_post_test)
 confusionMatrix(knn_post_test[,"Recidivism_Within_3years"],knn_post_pred,
                 positive = 'true')
+```
+
+Using Logistic Regression to generate risk scores based on pre-release factors and pre- and post-release factors. Accuracy as a classification method also tested. Comparing post release factors between the group whose risk scores increased and the group whose scores decreased
+```{r}
+index <- sample(1:nrow(prior_dem), .7 * nrow(prior_dem))
+lr_prior_train <- prior_dem[index,]
+lr_prior_test <- prior_dem[-index,]
+
+lr_prior<-glm(Recidivism_Within_3years ~.,lr_prior_train, family = 'binomial')
+
+lr_prior_pred <- predict(lr_prior, lr_prior_test, type="response")
+lr_prior_class <- ifelse(lr_prior_pred>=0.5, "true", "false")
+lr_prior_confmatrix <- table(actual = lr_prior_test$Recidivism_Within_3years,
+                             predicted = lr_prior_class)
+lr_prior_confmatrix
+
+all_data_risk <- all_data
+index <- sample(1:nrow(all_data), .7 * nrow(all_data))
+lr_all_train <- all_data[index,]
+lr_all_test <- all_data[-index,]
+
+
+
+lr_all<-glm(Recidivism_Within_3years ~.,lr_all_train, family = 'binomial')
+summary(lr_all)
+
+lr_all_pred <- predict(lr_all, lr_all_test, type="response")
+lr_all_class <- ifelse(lr_all_pred>=0.5, "true", "false")
+lr_all_confmatrix <- table(actual = lr_all_test$Recidivism_Within_3years,
+                           predicted = lr_all_class)
+lr_all_confmatrix
+
+all_data_risk$prior_prob = predict(lr_prior, all_data_risk, type = "response")
+all_data_risk$all_prob = predict(lr_all, all_data_risk, type = "response")
+hist(all_data_risk$all_prob)
+all_data_risk$prob_dif = all_data_risk$all_prob - all_data_risk$prior_prob
+hist(all_data_risk$prob_dif)
+sd(all_data_risk$prior_prob)
+all_data_risk$change = "Higher"
+all_data_risk$change[all_data_risk$prob_dif<0] = "Lower"
+lower_prob <- all_data_risk[all_data_risk$prob_dif < -0.1,]
+higher_prob <- all_data_risk[all_data_risk$prob_dif > 0.1,]
+
+hist(higher_prob$Jobs_Per_Year)
+hist(lower_prob$Jobs_Per_Year)
+hist(higher_prob$Percent_Days_Employed)
+hist(lower_prob$Percent_Days_Employed)
+plot(lower_prob$Recidivism_Within_3years)
+
+plot(higher_prob$Recidivism_Within_3years)
+wilcox.test(higher_prob$Percent_Days_Employed,
+            lower_prob$Percent_Days_Employed, exact= F)
+wilcox.test(higher_prob$Jobs_Per_Year,
+            lower_prob$Jobs_Per_Year, exact= F)
+resid <-table(all_data_risk$change,all_data_risk$Residence_Changes)
+resid
+chisq.test(resid)
+
+```
+
