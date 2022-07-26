@@ -1,3 +1,15 @@
+---
+title: "Recidivism Final"
+author: "Jeff Westerhof"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
 library(epiDisplay)
 library(caret)
 library(ggplot2)
@@ -10,7 +22,6 @@ head(rec_raw)
 #removing rows with more than 4 removes 20% of dataset,threshold increased to 5
 #and only 1810 rows removed
 rec <- rec_raw[rowSums(is.na(rec_raw)) < 6, ]
-summary(rec)
 
 #Imputing Supervision Level from Risk Score
 sum(is.na(rec$Supervision_Level_First))
@@ -26,14 +37,12 @@ rec$Supervision_Level_First[is.na(rec$Supervision_Level_First) & is.na(rec$Super
 sum(is.na(rec$Gang_Affiliated))
 which.max(table(rec$Gang_Affiliated))
 rec$Gang_Affiliated[is.na(rec$Gang_Affiliated)] = 'false'
-summary(rec)
 
 
 #Imputing Offence: category other
 sum(is.na(rec$Prison_Offense))
 rec$Prison_Offense[is.na(rec$Prison_Offense)]= 'Other'
 
-summary(rec)
 #Imputing Drug tests. Because all the NAs for the drug tests are the same records,
 #going on the assumption that drug testing was not part of their release conditions
 #Since the median is 0, will assign 0 to these records and not the mean
@@ -64,8 +73,8 @@ rec$Jobs_Per_Year[is.na(rec$Jobs_Per_Year)] = .7722
 str(rec)
 rec <- as.data.frame(rec, stringsAsFactors = TRUE)
 rec$Residence_PUMA = as.factor(rec$Residence_PUMA)
-#Some statistics
-#compare groups by recidivism outcome
+#Some statistics 
+#comparing groups by recidivism outcome
 gangt<- table(rec$Gang_Affiliated,rec$Recidivism_Within_3years)
 chisq.test(gangt)
 racet<-table(rec$Race, rec$Recidivism_Within_3years)
@@ -83,7 +92,7 @@ chisq.test(residencet)
 offenset<-table(rec$Prison_Offense,rec$Recidivism_Within_3years)
 chisq.test(offenset)
 sentencet<-table(rec$Prison_Years, rec$Recidivism_Within_3years)
-chisq.test(senencet)
+chisq.test(sentencet)
 felonyt<-table(rec$Prior_Arrest_Episodes_Felony, rec$Recidivism_Within_3years)
 chisq.test(felonyt)
 misdt<-table(rec$Prior_Arrest_Episodes_Misd, rec$Recidivism_Within_3years)
@@ -129,6 +138,37 @@ chisq.test(absencest)
 residencet<-table(rec$Residence_Changes, rec$Recidivism_Within_3years)
 chisq.test(residencet)
 
+
+MH_condition<-tabpct(rec$Condition_MH_SA, rec$Recidivism_Within_3years, percent = 'row',
+                     main = 'Recidivism & Mental health/Substance', xlab = 'MH conditions?', ylab = 'Recidivism',
+                     col = c('green','red'))
+Cog_condition<-tabpct(rec$Condition_Cog_Ed, rec$Recidivism_Within_3years, percent = 'row',
+                      main = 'Recidivism & Cognitive conditions', xlab = 'Cog conditions?', ylab = 'Recidivism',
+                      col = c('green','red'))
+Oth_condition<-tabpct(rec$Condition_Othe, rec$Recidivism_Within_3years, percent = 'row',
+                      main = 'Recidivism & Other conditions', xlab = 'Oth conditions?', ylab = 'Recidivism',
+                      col = c('green','red'))
+delinquency<-tabpct(rec$Delinquency_Reports, rec$Recidivism_Within_3years, percent = 'row',
+                    main = 'Recidivism & delinquency', xlab = 'Delinquencies', ylab = 'Recidivism',
+                    col = c('green','red'))
+attendance<-tabpct(rec$Program_Attendances, rec$Recidivism_Within_3years, percent = 'row',
+                   main = 'Recidivism & Program attendance', xlab = 'Attendances', ylab = 'Recidivism',
+                   col = c('green','red'))
+absences<-tabpct(rec$Program_UnexcusedAbsences, rec$Recidivism_Within_3years, percent = 'row',
+                 main = 'Recidivism & Program absence', xlab = 'Absence', ylab = 'Recidivism',
+                 col = c('green','red'))
+residence<-tabpct(rec$Residence_Changes, rec$Recidivism_Within_3years, percent = 'row',
+                  main = 'Recidivism & Residence changes', xlab = 'Residences', ylab = 'Recidivism',
+                  col = c('green','red'))
+Misdemeanor<-tabpct(rec$Prior_Arrest_Episodes_Misd, rec$Recidivism_Within_3years, percent = 'row',
+                    main = 'Recidivism & Misdemeanor Arrests', xlab = 'Arrests', ylab = 'Recidivism',
+                    col = c('green','red'))
+felony<-tabpct(rec$Prior_Arrest_Episodes_Felony, rec$Recidivism_Within_3years, percent = 'row',
+               main = 'Recidivism & Felony Arrests', xlab = 'Arrests', ylab = 'Recidivism',
+               col = c('green','red'))
+PPviol<-tabpct(rec$Prior_Arrest_Episodes_PPViolationCharges, rec$Recidivism_Within_3years, percent = 'row',
+               main = 'Recidivism & Parole/Probation Violations', xlab = '# Arrests', ylab = 'Recidivism',
+               col = c('#336666','#33CC66'))
 MH_condition<-tabpct(rec$Condition_MH_SA, rec$Recidivism_Within_3years, percent = 'row',
                      main = 'Recidivism & Mental health/Substance', xlab = 'MH conditions?', ylab = 'Recidivism',
                      col = c('#336666','#33CC66'))
@@ -171,9 +211,6 @@ age<-tabpct(rec$Age_at_Release, rec$Recidivism_Within_3years, percent = 'row',
 gender<-tabpct(rec$Gender, rec$Recidivism_Within_3years, percent = 'row',
                main = 'Recidivism & Gender', xlab = 'Gender', ylab = 'Recidivism',
                col = c('#336666','#33CC66'))
-gender<-tabpct(rec$Prior_Arrest_Episodes_PPViolationCharges, rec$Recidivism_Within_3years, percent = 'row',
-               main = 'Recidivism & Parole/Probation Violations', xlab = '# Arrests', ylab = 'Recidivism',
-               col = c('#336666','#33CC66'))
 education<-tabpct(rec$Education_Level, rec$Recidivism_Within_3years, percent = 'row',
                   main = 'Recidivism & Education', xlab = 'Education', ylab = 'Recidivism',
                   col = c('#336666','#33CC66'))
@@ -197,18 +234,10 @@ sd(rec$DrugTests_Meth_Positive[!is.na(rec$DrugTests_Meth_Positive)])
 sd(rec$DrugTests_Other_Positive[!is.na(rec$DrugTests_Other_Positive)])
 sd(rec$Percent_Days_Employed[!is.na(rec$Percent_Days_Employed)])
 sd(rec$Jobs_Per_Year[!is.na(rec$Jobs_Per_Year)])
-recy<-all_data_risk[all_data_risk$Recidivism_Within_3years == 'true',]
-recn<-all_data_risk[all_data_risk$Recidivism_Within_3years == 'false',]
-summary(recy)
-summary(recn)
 
-wilcox.test(recy$Avg_Days_per_DrugTest, recn$Avg_Days_per_DrugTest)
-wilcox.test(recy$DrugTests_THC_Positive, recn$DrugTests_THC_Positive)
-wilcox.test(recy$DrugTests_Cocaine_Positive,recn$DrugTests_Cocaine_Positive)
-wilcox.test(recy$DrugTests_Meth_Positive, recn$DrugTests_Meth_Positive)
-wilcox.test(recy$DrugTests_Other_Positive, recn$DrugTests_Other_Positive)
-wilcox.test(recy$Jobs_Per_Year, recn$Jobs_Per_Year)
-wilcox.test(recy$Percent_Days_Employed, recn$Percent_Days_Employed)
+
+
+
 
 hist(rec$Supervision_Risk_Score_First)
 hist(rec$Percent_Days_Employed)
@@ -245,7 +274,6 @@ lrp_time <-lrp_end-lrp_start
 lrp_time
 
 lr_prior_pred <- predict(lr_prior, lr_prior_test, type="raw")
-lr_prior_pred
 lr_prior_confmatrix<-confusionMatrix(lr_prior_test$Recidivism_Within_3years,
                                      lr_prior_pred,positive = "true")
 lr_prior_confmatrix
@@ -268,7 +296,6 @@ lra_time
 
 
 lr_all_pred <- predict(lr_all, lr_all_test, type="raw")
-lr_all_pred
 lr_all_confmatrix <- confusionMatrix(lr_all_test$Recidivism_Within_3years,
                                      lr_all_pred, positive = "true")
 lr_all_confmatrix
@@ -346,9 +373,7 @@ mean(all_data_risk$prior_risk[all_data_risk$Recidivism_Within_3years == 'false']
 
 
 ##CHI SQUARE
-#Pearson's chi-squared test is used to determine whether there is a
-#statistically significant difference between the expected frequencies
-#and the observed frequencies in one or more categories of a contingency table.
+
 lower_prob <- all_data_risk[all_data_risk$change == "Lower",]
 higher_prob <- all_data_risk[all_data_risk$change == "Higher",]
 
@@ -396,7 +421,6 @@ wilcox.test(higher_prob$DrugTests_Meth_Positive,
             lower_prob$DrugTests_Meth_Positive, exact= F)
 wilcox.test(higher_prob$DrugTests_Other_Positive,
             lower_prob$DrugTests_Other_Positive, exact= F)
-
 
 ##KNN
 knn_data_prior<-prior_dem
@@ -501,7 +525,7 @@ plot(knnprimp, top =10, color = 'red')
 knnpoimp<-varImp(knn_post)
 plot(knnpoimp, top = 10)
 
-##Random Forest
+###Random Forest
 set.seed(222)
 
 #Using prior data
@@ -520,7 +544,7 @@ rfp_time
 
 rf_prior_pred <- predict(rf_prior, rfprior_test)
 rf_prior_cm<-confusionMatrix(rfprior_test$Recidivism_Within_3years,rf_prior_pred,
-                             positive = "true")
+                positive = "true")
 rf_prior_cm
 
 #Using all data
@@ -541,7 +565,7 @@ rfa_time
 rf_all_pred <- predict(rf_all, rfall_test)
 
 rf_all_cm<-confusionMatrix(rfall_test$Recidivism_Within_3years,rf_all_pred,
-                           positive = "true")
+                positive = "true")
 rf_all_cm
 
 #Training results
@@ -605,4 +629,20 @@ model_neg<-ggplot(data=model_results, aes(x = specificity, y = pred_model, fill 
         panel.grid.major = element_line(colour = "grey50"),
   )+labs(title = "Model Specificity",x = '', y = '') +scale_x_continuous(breaks=seq(0,80,10))
 model_neg
+recy<-all_data_risk[all_data_risk$Recidivism_Within_3years == 'true',]
+recn<-all_data_risk[all_data_risk$Recidivism_Within_3years == 'false',]
+summary(recy)
+summary(recn)
+wilcox.test(recy$Avg_Days_per_DrugTest, recn$Avg_Days_per_DrugTest)
+wilcox.test(recy$DrugTests_THC_Positive, recn$DrugTests_THC_Positive)
+wilcox.test(recy$DrugTests_Cocaine_Positive,recn$DrugTests_Cocaine_Positive)
+wilcox.test(recy$DrugTests_Meth_Positive, recn$DrugTests_Meth_Positive)
+wilcox.test(recy$DrugTests_Other_Positive, recn$DrugTests_Other_Positive)
+wilcox.test(recy$Jobs_Per_Year, recn$Jobs_Per_Year)
+wilcox.test(recy$Percent_Days_Employed, recn$Percent_Days_Employed)
+
+
+
+
+```
 
