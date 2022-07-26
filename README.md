@@ -24,4 +24,6 @@ Stage 5: Logistic regression
   . Compare the risk scores: what are the differences betewen those whose risk scores increased and those where they decreased
   . Use models to predict recidivism outcomes
 Stage 6: Evaluating the models and comparing them
-  . More to come
+  . Efficiency: time taken to train models
+  . Stability: variation in accuracy across folds
+  . Effectiveness: accuracy, precision, recall, & specificity
